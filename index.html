@@ -71,41 +71,48 @@
 
       const formData = new FormData();
       formData.append('file', audioBlob);
-      formData.append('upload_preset', audioUploads);
+      formData.append('upload_preset', 'audioUploads');
 
       document.getElementById('statusText').textContent = "上傳錄音中...";
+      try {
+        const cloudinaryResponse = await fetch(CLOUDINARY_URL, {
+          method: 'POST',
+          body: formData
+        });
+        if (!cloudinaryResponse.ok) {
+          throw new Error("Cloudinary上傳失敗");
+        }
+        const cloudinaryResult = await cloudinaryResponse.json();
+        const realAudioUrl = cloudinaryResult.secure_url;
 
-      const cloudinaryResponse = await fetch(CLOUDINARY_URL, {
-        method: 'POST',
-        body: formData
-      });
+        const userName = document.getElementById('userName').value;
+        const userEmail = document.getElementById('userEmail').value;
 
-      const cloudinaryResult = await cloudinaryResponse.json();
-      const realAudioUrl = cloudinaryResult.secure_url;
+        const qrCodeUrl = `https://chart.googleapis.com/chart?chs=400x400&cht=qr&chl=${encodeURIComponent(realAudioUrl)}`;
 
-      const userName = document.getElementById('userName').value;
-      const userEmail = document.getElementById('userEmail').value;
+        document.getElementById('qrCode').src = qrCodeUrl;
 
-      const qrCodeUrl = `https://chart.googleapis.com/chart?chs=400x400&cht=qr&chl=${encodeURIComponent(realAudioUrl)}`;
+        document.getElementById('statusText').textContent = "正在傳送資料到主站...";
 
-      document.getElementById('qrCode').src = qrCodeUrl;
+        await fetch("https://kps0980.wixsite.com/flower-for-you/_functions/saveAudio", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            name: userName,
+            email: userEmail,
+            audioUrl: realAudioUrl,
+            qrCodeUrl: qrCodeUrl
+          })
+        });
 
-      document.getElementById('statusText').textContent = "正在傳送資料到主站...";
+        document.getElementById('statusText').textContent = "上傳成功！可以去主站查看囉～";
 
-      await fetch("https://kps0980.wixsite.com/flower-for-you/_functions/saveAudio", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          name: userName,
-          email: userEmail,
-          audioUrl: realAudioUrl,
-          qrCodeUrl: qrCodeUrl
-        })
-      });
-
-      document.getElementById('statusText').textContent = "上傳成功！可以去主站查看囉～";
+      } catch (error) {
+        console.error(error);
+        document.getElementById('statusText').textContent = "上傳失敗：" + error.message;
+      }
     };
   </script>
 
